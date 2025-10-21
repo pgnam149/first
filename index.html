@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Employee Management</title>
+<style>
+    body { font-family: Arial; margin: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    input, select { padding: 5px; margin: 5px 0; width: 100%; }
+    button { padding: 5px 10px; margin-top: 10px; }
+    .form-container { max-width: 400px; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<h1>Employee Management</h1>
+
+<div class="form-container">
+    <h2>Add Employee</h2>
+    <input type="text" id="employeeName" placeholder="Employee Name">
+    <input type="text" id="employeeCode" placeholder="Employee Code">
+    <input type="text" id="phone" placeholder="Phone">
+    <input type="email" id="email" placeholder="Email">
+    <button onclick="addEmployee()">Add Employee</button>
+</div>
+
+<div class="form-container">
+    <h2>Search Employee</h2>
+    <input type="text" id="searchInput" placeholder="Enter ID or Name">
+    <button onclick="searchEmployee()">Search</button>
+</div>
+
+<h2>Employee List</h2>
+<table id="employeeTable">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+const apiUrl = 'https://localhost:5001/api/employees'; // Thay URL API của bạn
+
+// Lấy tất cả nhân viên
+async function fetchEmployees() {
+    const res = await fetch(apiUrl);
+    const employees = await res.json();
+    renderTable(employees);
+}
+
+// Render bảng nhân viên
+function renderTable(employees) {
+    const tbody = document.querySelector('#employeeTable tbody');
+    tbody.innerHTML = '';
+    employees.forEach(emp => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${emp.employeeId}</td>
+            <td>${emp.employeeCode}</td>
+            <td>${emp.employeeName}</td>
+            <td>${emp.phone || ''}</td>
+            <td>${emp.email || ''}</td>
+            <td><button onclick="deleteEmployee(${emp.employeeId})">Delete</button></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Thêm nhân viên
+async function addEmployee() {
+    const name = document.getElementById('employeeName').value;
+    const code = document.getElementById('employeeCode').value;
+    const phone = document.getElementById('phone').value;
+    const email = document.getElementById('email').value;
+
+    const employee = { employeeName: name, employeeCode: code, phone, email };
+
+    const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(employee)
+    });
+
+    if(res.ok) {
+        alert('Employee added!');
+        document.getElementById('employeeName').value = '';
+        document.getElementById('employeeCode').value = '';
+        document.getElementById('phone').value = '';
+        document.getElementById('email').value = '';
+        fetchEmployees();
+    } else {
+        alert('Error adding employee');
+    }
+}
+
+// Xóa nhân viên
+async function deleteEmployee(id) {
+    if(!confirm('Are you sure?')) return;
+    const res = await fetch(`${apiUrl}/${id}`, { method: 'DELETE' });
+    if(res.ok) {
+        alert('Employee deleted!');
+        fetchEmployees();
+    } else {
+        alert('Error deleting employee');
+    }
+}
+
+// Tìm kiếm theo ID hoặc tên
+async function searchEmployee() {
+    const input = document.getElementById('searchInput').value.trim();
+    if(!input) { fetchEmployees(); return; }
+
+    let employees = [];
+    if(!isNaN(input)) {
+        // Nếu là số → tìm theo ID
+        const res = await fetch(`${apiUrl}/${input}`);
+        if(res.ok) employees.push(await res.json());
+    } else {
+        // Nếu là chữ → tìm theo tên
+        const res = await fetch(`${apiUrl}/search?name=${encodeURIComponent(input)}`);
+        if(res.ok) employees = await res.json();
+    }
+
+    renderTable(employees);
+}
+
+// Load khi mở trang
+fetchEmployees();
+</script>
+</body>
+</html>
